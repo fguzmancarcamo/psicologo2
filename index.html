@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroRehab Control</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        .animate-fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-800">
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-10 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="bg-indigo-600 p-2 rounded-lg">
+                    <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5M14 20l-7-7 7-7" />
+                    </svg>
+                </div>
+                <h1 class="text-xl font-bold bg-gradient-to-r from-indigo-700 to-indigo-500 bg-clip-text text-transparent hidden sm:block">
+                    NeuroRehab Control
+                </h1>
+            </div>
+            <button id="btnNuevoPaciente" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 text-sm font-medium transition-all shadow-md hover:shadow-lg active:scale-95">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9V7a2 2 0 00-2-2h-2V4a2 2 0 00-4 0v3H6a2 2 0 00-2 2v2M6 19h12a2 2 0 002-2v-7a2 2 0 00-2-2H6a2 2 0 00-2 2v7a2 2 0 002 2z" />
+                </svg>
+                <span class="hidden sm:inline">Nuevo Paciente</span>
+                <span class="sm:hidden">Nuevo</span>
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8" id="statsContainer">
+            <!-- Cargar estadísticas con JS -->
+        </div>
+
+        <!-- Filters -->
+        <div class="mb-6 relative">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </div>
+            <input
+                type="text"
+                id="buscador"
+                placeholder="Buscar por nombre o diagnóstico..."
+                class="block w-full pl-10 pr-3 py-3 border border-gray-200 rounded-xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm shadow-sm transition-all"
+            >
+        </div>
+
+        <!-- Patient Grid -->
+        <div id="listaPacientes" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- Cargar pacientes con JS -->
+        </div>
+    </main>
+
+    <!-- Modal -->
+    <div id="modalPaciente" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 hidden backdrop-blur-sm">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-fade-in">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-slate-50">
+                <h3 class="text-lg font-semibold text-slate-800" id="tituloModal">Nuevo Paciente</h3>
+                <button onclick="cerrarModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    ✕
+                </button>
+            </div>
+            <div class="p-6">
+                <form id="formPaciente" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre Completo</label>
+                        <input required name="name" type="text" class="w-full rounded-lg border-gray-300 border px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej. Juan Pérez">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Diagnóstico / Motivo</label>
+                        <input name="diagnosis" type="text" class="w-full rounded-lg border-gray-300 border px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="Ej. Ansiedad, Rehabilitación física...">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Primera Atención</label>
+                            <input required name="firstVisit" type="date" class="w-full rounded-lg border-gray-300 border px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Última Atención</label>
+                            <input required name="lastVisit" type="date" class="w-full rounded-lg border-gray-300 border px-3 py-2 focus:ring-indigo-500 focus:border-indigo-500">
+                            <p class="text-xs text-gray-400 mt-1">La próxima cita se calculará +1 mes desde aquí.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-4 flex gap-3">
+                        <button type="button" onclick="cerrarModal()" class="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-slate-700 hover:bg-gray-50 font-medium">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium shadow-md">
+                            Guardar Paciente
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // === CONFIGURACIÓN DE FIREBASE ===
+        const firebaseConfig = {
+            apiKey: "TU_API_KEY",
+            authDomain: "TU_PROYECTO.firebaseapp.com",
+            projectId: "TU_PROYECTO",
+            storageBucket: "TU_PROYECTO.appspot.com",
+            messagingSenderId: "TU_SENDER_ID",
+            appId: "TU_APP_ID"
+        };
+
+        // Inicializar Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const appId = 'default'; // Cambiar por tu appId si es diferente
+
+        // === ESTADOS ===
+        let pacienteEnEdicion = null;
+        let pacientes = [];
+        
+        // === FUNCIONES AUXILIARES ===
+        function formatoFecha(fecha) {
+            if (!fecha) return 'Sin fecha';
+            const opciones = { year: 'numeric', month: 'long', day: 'numeric' };
+            return new Date(fecha + 'T00:00:00').toLocaleDateString('es-ES', opciones);
+        }
+
+        function proximaFechaCita(ultimaVisita) {
+            if (!ultimaVisita) return '';
+            const fecha = new Date(ultimaVisita + 'T00:00:00');
+            fecha.setMonth(fecha.getMonth() + 1);
+            return fecha.toISOString().split('T')[0];
+        }
+
+        function colorEstado(proximaFecha) {
+            if (!proximaFecha) return 'bg-gray-100 text-gray-600 border-gray-200';
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const proxima = new Date(proximaFecha + 'T00:00:00');
+            
+            const diffTime = proxima - hoy;
+            const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDias < 0) return 'bg-red-50 text-red-700 border-red-200';
+            if (diffDias <= 7) return 'bg-amber-50 text-amber-700 border-amber-200';
+            return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+        }
+
+        function textoEstado(proximaFecha) {
+            if (!proximaFecha) return 'Sin programar';
+            const hoy = new Date();
+            hoy.setHours(0,0,0,0);
+            const proxima = new Date(proximaFecha + 'T00:00:00');
+            
+            const diffTime = proxima - hoy;
+            const diffDias = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDias < 0) return `Atrasada por ${Math.abs(diffDias)} días`;
+            if (diffDias === 0) return 'Es hoy';
+            if (diffDias <= 7) return `En ${diffDias} días`;
+            return 'Programada';
+        }
+
+        // === AUTENTICACIÓN ===
+        auth.onAuthStateChanged((user) => {
+            if (user) cargarPacientes();
+            else {
+                // Autenticación anónima
+                auth.signInAnonymously().catch((error) => {
+                    console.error("Error de autenticación:", error);
+                });
+            }
+        });
+
+        // === CARGAR PACIENTES ===
+        function cargarPacientes() {
+            const q = db.collection('artifacts').doc(appId)
+                       .collection('users').doc(auth.currentUser.uid)
+                       .collection('patients');
+
+            q.onSnapshot((snapshot) => {
+                pacientes = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+
+                // Ordenar por próxima cita
+                pacientes.sort((a, b) => {
+                    const proxA = proximaFechaCita(a.lastVisit);
+                    const proxB = proximaFechaCita(b.lastVisit);
+                    return new Date(proxA) - new Date(proxB);
+                });
+
+                renderizarEstadisticas();
+                renderizarPacientes();
+            }, (error) => {
+                console.error("Error cargando pacientes:", error);
+            });
+        }
+
+        // === RENDERIZAR ESTADÍSTICAS ===
+        function renderizarEstadisticas() {
+            const contenedor = document.getElementById('statsContainer');
+            const total = pacientes.length;
+            const atrasados = pacientes.filter(p => {
+                const proxima = proximaFechaCita(p.lastVisit);
+                return new Date(proxima) < new Date();
+            }).length;
+            const estaSemana = pacientes.filter(p => {
+                const proxima = proximaFechaCita(p.lastVisit);
+                const diff = (new Date(proxima) - new Date()) / (1000 * 60 * 60 * 24);
+                return diff >= 0 && diff <= 7;
+            }).length;
+
+            contenedor.innerHTML = `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h4v-2a4 4 0 00-8 0v2h4zm-8 0h4v-2a4 4 0 00-8 0v2h4zM7 20h4v-2a4 4 0 00-8 0v2h4zM4 4h16v2H4zM4 8h16v2H4zM4 12h16v2H4zM4 16h16v2H4z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500">Total Pacientes</p>
+                        <p class="text-2xl font-bold text-slate-800">${total}</p>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-amber-100 p-3 rounded-full text-amber-600">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h2m-2 4h2m18-4c0 1.149-9.339 2-18 2-8.661 0-15.339-1-15.339-2 0-1 6.678-1 15.339-1 8.661 0 18 1 18 1z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500">Esta Semana</p>
+                        <p class="text-2xl font-bold text-slate-800">${estaSemana}</p>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div class="bg-red-100 p-3 rounded-full text-red-600">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500">Atrasados</p>
+                        <p class="text-2xl font-bold text-slate-800">${atrasados}</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // === RENDERIZAR PACIENTES ===
+        function renderizarPacientes() {
+            const contenedor = document.getElementById('listaPacientes');
+            const terminoBusqueda = document.getElementById('buscador').value.toLowerCase();
+
+            const pacientesFiltrados = pacientes.filter(p => 
+                p.name.toLowerCase().includes(terminoBusqueda) ||
+                (p.diagnosis && p.diagnosis.toLowerCase().includes(terminoBusqueda))
+            );
+
+            if (pacientesFiltrados.length === 0) {
+                contenedor.innerHTML = `
+                    <div class="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-300 col-span-full">
+                        <div class="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-indigo-50 mb-4">
+                            <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-900">No se encontraron pacientes</h3>
+                        <p class="mt-1 text-sm text-gray-500">Intenta ajustar tu búsqueda o agrega un nuevo paciente.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            contenedor.innerHTML = pacientesFiltrados.map(paciente => {
+                const proximaFecha = proximaFechaCita(paciente.lastVisit);
+                const claseEstado = colorEstado(proximaFecha);
+                const textoEstado = textoEstado(proximaFecha);
+
+                return `
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow duration-200 flex flex-col">
+                        <div class="p-5 flex justify-between items-start border-b border-slate-50">
+                            <div>
+                                <h3 class="font-bold text-slate-800 text-lg">${paciente.name}</h3>
+                                <span class="text-sm font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded mt-1 inline-block">
+                                    ${paciente.diagnosis || 'Sin diagnóstico'}
+                                </span>
+                            </div>
+                            <div class="flex gap-1">
+                                <button onclick="editarPaciente('${paciente.id}')" class="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-indigo-600 rounded-lg transition-colors" title="Editar">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H9a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2V9a2 2 0 00-2-2h-2M5 9h14M5 15h14M10 5h4M8 13a2 2 0 011.064 3.536 2 2 0 01-1.064 0 2 2 0 01-1.064-3.536 2 2 0 011.064 0z" />
+                                    </svg>
+                                </button>
+                                <button onclick="eliminarPaciente('${paciente.id}')" class="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-red-600 rounded-lg transition-colors" title="Eliminar">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="p-5 flex-1">
+                            <div class="space-y-4">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Primera Vez</p>
+                                        <div class="flex items-center text-slate-600 text-sm">
+                                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            ${formatoFecha(paciente.firstVisit)}
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p class="text-xs text-slate-400 uppercase tracking-wide font-semibold mb-1">Última Vez</p>
+                                        <div class="flex items-center text-slate-600 text-sm">
+                                            <svg class="w-3.5 h-3.5 mr-1.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11 11 0 0112 2.389a11 11 0 01-7.617 19.382 11 11 0 011.531-19.902 11 11 0 018.986 2.487z" />
+                                            </svg>
+                                            ${formatoFecha(paciente.lastVisit)}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="${claseEstado} rounded-lg p-3 border flex flex-col gap-1">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-bold uppercase tracking-wide opacity-80">Próxima Atención</span>
+                                        <span class="text-xs font-bold px-2 py-0.5 bg-white bg-opacity-50 rounded-full">${textoEstado}</span>
+                                    </div>
+                                    <div class="font-semibold text-lg flex items-center">
+                                        <svg class="w-5 h-5 mr-2 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h2m-2 4h2m18-4c0 1.149-9.339 2-18 2-8.661 0-15.339-1-15.339-2 0-1 6.678-1 15.339-1 8.661 0 18 1 18 1z" />
+                                        </svg>
+                                        ${formatoFecha(proximaFecha)}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="p-4 bg-slate-50 border-t border-slate-100 rounded-b-xl">
+                            <button onclick="marcarAtendido('${paciente.id}')" class="w-full py-2 bg-white border border-indigo-200 text-indigo-700 hover:bg-indigo-50 hover:border-indigo-300 rounded-lg text-sm font-medium transition-all shadow-sm flex justify-center items-center gap-2 group">
+                                <svg class="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Atendido Hoy
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // === MANEJO DEL MODAL ===
+        function abrirModal(paciente = null) {
+            if (paciente) {
+                document.getElementById('tituloModal').textContent = 'Editar Paciente';
+                pacienteEnEdicion = paciente;
+                const form = document.getElementById('formPaciente');
+                form.name.value = paciente.name;
+                form.diagnosis.value = paciente.diagnosis;
+                form.firstVisit.value = paciente.firstVisit;
+                form.lastVisit.value = paciente.lastVisit;
+            } else {
+                document.getElementById('tituloModal').textContent = 'Nuevo Paciente';
+                pacienteEnEdicion = null;
+                form.reset();
+            }
+            document.getElementById('modalPaciente').classList.remove('hidden');
+        }
+
+        function cerrarModal() {
+            document.getElementById('modalPaciente').classList.add('hidden');
+            pacienteEnEdicion = null;
+        }
+
+        // === ACCIONES DEL FORMULARIO ===
+        document.getElementById('formPaciente').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const nuevoPaciente = {
+                name: form.name.value,
+                diagnosis: form.diagnosis.value,
+                firstVisit: form.firstVisit.value,
+                lastVisit: form.lastVisit.value,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            try {
+                if (pacienteEnEdicion) {
+                    // Actualizar
+                    await db.collection('artifacts').doc(appId)
+                           .collection('users').doc(auth.currentUser.uid)
+                           .collection('patients').doc(pacienteEnEdicion.id)
+                           .set(nuevoPaciente, { merge: true });
+                } else {
+                    // Crear
+                    await db.collection('artifacts').doc(appId)
+                           .collection('users').doc(auth.currentUser.uid)
+                           .collection('patients')
+                           .add({
+                               ...nuevoPaciente,
+                               createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                           });
+                }
+                cerrarModal();
+            } catch (error) {
+                console.error("Error guardando paciente:", error);
+            }
+        });
+
+        // === BOTONES DE ACCIÓN ===
+        document.getElementById('btnNuevoPaciente').addEventListener('click', () => abrirModal());
+        
+        document.getElementById('buscador').addEventListener('input', renderizarPacientes);
+
+        window.editarPaciente = function(id) {
+            const paciente = pacientes.find(p => p.id === id);
+            if (paciente) abrirModal(paciente);
+        };
+
+        window.eliminarPaciente = async function(id) {
+            if (!confirm('¿Estás seguro de eliminar este paciente?')) return;
+            try {
+                await db.collection('artifacts').doc(appId)
+                       .collection('users').doc(auth.currentUser.uid)
+                       .collection('patients').doc(id)
+                       .delete();
+            } catch (error) {
+                console.error("Error eliminando paciente:", error);
+            }
+        };
+
+        window.marcarAtendido = async function(id) {
+            const hoy = new Date().toISOString().split('T')[0];
+            try {
+                await db.collection('artifacts').doc(appId)
+                       .collection('users').doc(auth.currentUser.uid)
+                       .collection('patients').doc(id)
+                       .update({
+                           lastVisit: hoy,
+                           updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                       });
+            } catch (error) {
+                console.error("Error marcando como atendido:", error);
+            }
+        };
+    </script>
+</body>
+</html>
